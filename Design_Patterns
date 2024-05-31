@@ -1,0 +1,180 @@
+*&---------------------------------------------------------------------*
+*& Report YNITS_OOPS_ABAP
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ynits_oops_abap.
+
+"Singelton Pattern Implementation
+CLASS lcl_singelton DEFINITION CREATE PRIVATE FINAL.
+
+  PUBLIC SECTION.
+    CLASS-METHODS: get_instance RETURNING VALUE(ro_singelton) TYPE REF TO lcl_singelton.
+
+  PRIVATE SECTION.
+    CLASS-DATA: lr_singelton TYPE REF TO lcl_singelton.
+    DATA: lv_run TYPE i.
+    METHODS: constructor.
+
+ENDCLASS.
+
+CLASS lcl_singelton IMPLEMENTATION.
+
+  METHOD get_instance.
+    IF lr_singelton IS BOUND.
+      ro_singelton = lr_singelton.
+    ELSE.
+      lr_singelton = NEW lcl_singelton( ).
+    ENDIF.
+  ENDMETHOD.
+
+  METHOD constructor.
+  ENDMETHOD.
+
+
+ENDCLASS.
+
+"Observer pattern implementation
+
+INTERFACE lif_observer.
+  METHODS: update IMPORTING iv_stock_level TYPE i iv_item_id TYPE string.
+ENDINTERFACE.
+
+CLASS lcl_stock_subject DEFINITION.
+  PUBLIC SECTION.
+    METHODS: attach IMPORTING io_observer TYPE REF TO lif_observer,
+      detach IMPORTING io_observer TYPE REF TO lif_observer,
+      notify,
+      set_stock IMPORTING iv_stock_level TYPE i iv_item_id TYPE string.
+  PRIVATE SECTION.
+    DATA: mt_observers   TYPE TABLE OF REF TO lif_observer,
+          mv_stock_level TYPE i,
+          mv_item_id     TYPE string.
+
+ENDCLASS.
+
+CLASS lcl_stock_subject IMPLEMENTATION.
+  METHOD attach.
+  ENDMETHOD.
+  METHOD detach.
+  ENDMETHOD.
+  METHOD notify.
+  ENDMETHOD.
+  METHOD set_stock.
+    notify( ).
+  ENDMETHOD.
+ENDCLASS.
+
+CLASS lcl_inv_dashboard DEFINITION.
+  PUBLIC SECTION.
+    INTERFACES lif_observer.
+ENDCLASS.
+
+CLASS lcl_inv_dashboard  IMPLEMENTATION.
+  METHOD lif_observer~update.
+  ENDMETHOD.
+ENDCLASS.
+
+"Factory implementation using Abstract class
+
+CLASS lcl_car_factory DEFINITION ABSTRACT.
+  PUBLIC SECTION.
+    CLASS-METHODS: factory
+      IMPORTING iv_car_type   TYPE char1
+      RETURNING VALUE(ro_car) TYPE REF TO lcl_car_factory.
+    METHODS: my_name_is ABSTRACT.
+ENDCLASS.
+CLASS lcl_maruti DEFINITION INHERITING FROM lcl_car_factory.
+  PUBLIC SECTION.
+    METHODS my_name_is REDEFINITION.
+ENDCLASS.
+CLASS lcl_honda DEFINITION INHERITING FROM lcl_car_factory.
+  PUBLIC SECTION.
+    METHODS my_name_is REDEFINITION.
+ENDCLASS.
+CLASS lcl_maruti IMPLEMENTATION.
+  METHOD my_name_is.
+    MESSAGE 'I am maruti' TYPE 'I'.
+  ENDMETHOD.
+ENDCLASS.
+CLASS lcl_honda IMPLEMENTATION.
+  METHOD my_name_is.
+    MESSAGE 'I am honda' TYPE 'I'.
+  ENDMETHOD.
+ENDCLASS.
+CLASS lcl_car_factory IMPLEMENTATION.
+  METHOD factory.
+    CASE iv_car_type.
+      WHEN 'M'.
+        ro_car = NEW lcl_maruti( ).
+      WHEN 'H'.
+        ro_car = NEW lcl_honda( ).
+      WHEN OTHERS.
+    ENDCASE.
+  ENDMETHOD.
+ENDCLASS.
+
+"Factory implementation using interface
+INTERFACE lif_car_factory.
+  METHODS: my_name_is.
+ENDINTERFACE.
+CLASS lcl_maruti2 DEFINITION.
+  PUBLIC SECTION.
+    INTERFACES lif_car_factory.
+ENDCLASS.
+CLASS lcl_honda2 DEFINITION.
+  PUBLIC SECTION.
+    INTERFACES lif_car_factory.
+ENDCLASS.
+CLASS lcl_maruti2 IMPLEMENTATION.
+  METHOD lif_car_factory~my_name_is.
+    MESSAGE 'I am new maruti' TYPE 'I'.
+  ENDMETHOD.
+ENDCLASS.
+CLASS lcl_honda2 IMPLEMENTATION.
+  METHOD lif_car_factory~my_name_is.
+    MESSAGE 'I am new honda' TYPE 'I'.
+  ENDMETHOD.
+ENDCLASS.
+CLASS lcl_car_factory2 DEFINITION.
+  PUBLIC SECTION.
+  CLASS-METHODS: factory
+    IMPORTING iv_car_type   TYPE char1
+    RETURNING VALUE(ro_car) TYPE REF TO lif_car_factory..
+
+ENDCLASS.
+CLASS lcl_car_factory2 IMPLEMENTATION.
+  METHOD factory.
+    CASE iv_car_type.
+      WHEN 'M'.
+        ro_car = NEW lcl_maruti2( ).
+      WHEN 'H'.
+        ro_car = NEW lcl_honda2( ).
+      WHEN OTHERS.
+    ENDCASE.
+  ENDMETHOD.
+ENDCLASS.
+
+START-OF-SELECTION.
+  DATA(lo1) = lcl_singelton=>get_instance( ).
+  DATA: lo_subject   TYPE REF TO lcl_stock_subject,
+        lo_dashboard TYPE REF TO lcl_inv_dashboard.
+
+  lo_dashboard = NEW lcl_inv_dashboard( ).
+  lo_subject = NEW lcl_stock_subject( ).
+
+  lo_subject->attach( lo_dashboard ).
+  lo_subject->set_stock( iv_stock_level = 1 iv_item_id = 'Test' ).
+
+  "Factory 1 - Where name feature was mandatory
+  DATA(lo_my_car) = lcl_car_factory=>factory( 'M' ).
+  lo_my_car->my_name_is( ).
+  lo_my_car = lcl_car_factory=>factory( 'H' ).
+  lo_my_car->my_name_is( ).
+
+  "Factory 2 - Where name feature is optional
+  DATA lo_new_car TYPE REF TO lif_car_factory.
+  lo_new_car = lcl_car_factory2=>factory( 'M' ).
+  lo_new_car->my_name_is( ).
+  lo_new_car = lcl_car_factory2=>factory( 'H' ).
+  lo_new_car->my_name_is( ).
