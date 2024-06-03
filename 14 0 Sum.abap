@@ -1,9 +1,16 @@
+*&---------------------------------------------------------------------*
+*& Report YNITS_0SUM
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+*REPORT ynits_0sum..
+
 " Given an array of positive and negative numbers, the task is to find if there is a subarray (of size at least one) with 0 sum.
 
-* Examples: 
+* Examples:
 
 * Input: {4, 2, -3, 1, 6}
-* Output: true 
+* Output: true
 * Explanation:
 * There is a subarray with zero sum from index 1 to 3.
 
@@ -21,7 +28,8 @@
 
 * Hash Map: We use a hash map to store the cumulative sum and its corresponding index. If the cumulative sum at a particular index is seen before, it means the elements between the previous index and the current index sum to 0.
 
-* Subarray Detection: If the cumulative sum is zero at any point, it means there is a subarray from the start of the array to the current index that sums to 0. Additionally, if any cumulative sum repeats, the elements between the first occurrence of this sum and the current index sum to 0.
+* Subarray Detection: If the cumulative sum is zero at any point, it means there is a subarray from the start of the array to the current index that sums to 0. Additionally, if any cumulative sum repeats, the elements between the first occurrence of
+"this sum and the current index sum to 0.
 
 REPORT z_find_zero_sum_subarray.
 
@@ -47,23 +55,30 @@ START-OF-SELECTION.
   CLEAR: lv_sum, found.
 
   " Initialize hash map with a cumulative sum of 0 at index -1
-  ls_element-index = -1.
+  ls_element-index = 1.
   ls_element-sum   = 0.
   APPEND ls_element TO lt_hashmap.
 
   " Traverse the array
-  LOOP AT lt_array INTO DATA(lv_elem) INDEX DATA(lv_index).
+  LOOP AT lt_array INTO DATA(lv_elem).
+    WRITE: lv_elem, ' ,'.
+  ENDLOOP.
+  LOOP AT lt_array INTO lv_elem.
     " Update cumulative sum
+    DATA(lv_index) = sy-tabix.
     lv_sum = lv_sum + lv_elem.
+
 
     " Check if the cumulative sum has been seen before
     READ TABLE lt_hashmap WITH KEY sum = lv_sum INTO ls_element.
     IF sy-subrc = 0.
       " Subarray with sum 0 found
-      lv_start = ls_element-index + 1.
+*      lv_start = ls_element-index + 1.
+      lv_start = ls_element-index.
       lv_end   = lv_index.
+      WRITE: / 'Subarray with 0 sum found ', ls_element-sum,  'from index', lv_start, 'to', lv_end.
       found = abap_true.
-      EXIT.
+*      EXIT.
     ELSE.
       " Add cumulative sum to hash map
       ls_element-index = lv_index.
@@ -71,13 +86,13 @@ START-OF-SELECTION.
       APPEND ls_element TO lt_hashmap.
     ENDIF.
   ENDLOOP.
-
-  " Output result
-  IF found = abap_true.
-    WRITE: / 'Subarray with 0 sum found from index', lv_start, 'to', lv_end.
-  ELSE.
-    WRITE: / 'No subarray with 0 sum found'.
-  ENDIF.
+*
+*  " Output result
+*  IF found = abap_true.
+*    WRITE: / 'Subarray with 0 sum found from index', lv_start, 'to', lv_end.
+*  ELSE.
+*    WRITE: / 'No subarray with 0 sum found'.
+*  ENDIF.
 
 * Explanation of the Code:
 * Initialization:
