@@ -1,0 +1,96 @@
+Behaviour Def Class:
+
+  static action fetch_data2 parameter ZACP_PERIOD_IN ;
+
+
+    METHODS fetch_data2 FOR MODIFY
+      IMPORTING keys FOR ACTION zccp_act_tp_cal~fetch_data2.
+
+@Metadata.allowExtensions: true
+define abstract entity ZACP_PERIOD_IN
+  //with parameters parameter_name : parameter_type
+{
+    period : zcp_period;
+    
+}
+
+METHOD fetch_data2.
+
+    DATA: lv_message     TYPE char100,
+          lv_destination TYPE string,
+          "lv_count       TYPE count,
+          lt_cal         TYPE ztt_azcalrep6,
+          lt_new_tab     TYPE TABLE FOR CREATE zccp_act_tp_cal.
+
+    lv_destination  = SWITCH string( sy-sysid WHEN 'S4D' THEN 'FPDCLNT200'
+                                                    WHEN 'S4T' THEN 'FPTCLNT200'
+                                                    WHEN 'S4Q' THEN 'FPQCLNT200'
+                                                    WHEN 'S4R' THEN 'FPRCLNT200'
+                                                    WHEN 'S4L' THEN 'FPLCLNT200'
+                                                    WHEN 'S4P' THEN 'FPPCLNT200' ).
+    DATA(lt_keys) = keys.
+    DATA(lv_period) = lt_keys[ 1 ]-%param-period.
+    DATA(lr_cp_util) = NEW zcl_cp_mfus_utility(   ).
+    CALL FUNCTION 'Z_CP_ACT2TP_PROD_PULL' DESTINATION lv_destination
+      EXPORTING
+        iv_period     = lv_period
+        iv_table_type = 'CAL'
+      IMPORTING
+        et_cal        = lt_cal
+        ev_message    = lv_message.
+    IF lv_message IS INITIAL.
+
+      lt_new_tab = VALUE #(  FOR ls_cal IN lt_cal
+                      ( product = ls_cal-product
+                      business = ls_cal-business
+                      dealtype = ls_cal-deal_type
+                      %control = VALUE #( product = if_abap_behv=>mk-on
+                                          business = if_abap_behv=>mk-on
+                                          dealtype = if_abap_behv=>mk-on )  ) ).
+      IF lt_new_tab IS NOT INITIAL.
+*        IF lt_entity IS INITIAL.
+        SELECT DISTINCT product, business, deal_type
+            FROM ztcp_act_tp_cal
+            ORDER BY product, business, deal_type
+            INTO TABLE @DATA(lt_exist).
+        IF sy-subrc EQ 0.
+          LOOP AT lt_exist ASSIGNING FIELD-SYMBOL(<lfs_exist>).
+            DATA(lv_index) = line_index( lt_new_tab[  product = <lfs_exist>-product
+            business = <lfs_exist>-business
+            dealtype = <lfs_exist>-deal_type  ] ).
+            IF lv_index NE 0.
+              DELETE lt_new_tab INDEX ( lv_index  ).
+            ENDIF.
+          ENDLOOP.
+        ENDIF.
+
+        IF lt_new_tab IS NOT INITIAL.
+          DATA(lv_lines) = lines( lt_new_tab ).
+          MODIFY ENTITIES OF zccp_act_tp_cal IN LOCAL MODE
+              ENTITY zccp_act_tp_cal
+              CREATE AUTO FILL CID WITH lt_new_tab
+              MAPPED DATA(lt_mapped)
+              FAILED DATA(lt_failed)
+              REPORTED DATA(lt_reported).
+          IF lt_failed IS INITIAL.
+            DATA lv_succ_msg TYPE string.
+            lv_succ_msg = | { lv_lines } records created |.
+            INSERT VALUE #(
+            %msg = new_message_with_text( severity = if_abap_behv_message=>severity-success text = lv_succ_msg )
+          ) INTO TABLE reported-zccp_act_tp_cal.
+          ENDIF.
+        ELSE.
+          INSERT VALUE #(
+          %msg = new_message_with_text( severity = if_abap_behv_message=>severity-information text = 'No new records created' )
+        ) INTO TABLE reported-zccp_act_tp_cal.
+        ENDIF.
+      ELSE.
+        INSERT VALUE #(
+        %msg = new_message_with_text( severity = if_abap_behv_message=>severity-information text = 'No Data Fetched' )
+      ) INTO TABLE reported-zccp_act_tp_cal.
+      ENDIF.
+    ELSE.
+      INSERT VALUE #(
+      %msg = new_message_with_text( severity = if_abap_behv_message=>severity-information text = lv_message )
+    ) INTO TABLE reported-zccp_act_tp_cal.
+    ENDIF.
